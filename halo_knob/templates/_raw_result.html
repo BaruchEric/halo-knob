@@ -1,0 +1,5 @@
+{% if ok is not none %}
+  <p class="{{ 'ok' if ok else 'bad' }}" style="margin:0 0 10px;white-space:pre-wrap">
+    {{ "✓ " if ok else "✗ " }}{{ msg }}</p>
+{% endif %}
+<textarea name="toml" spellcheck="false">{{ text }}</textarea>

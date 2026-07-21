@@ -1,0 +1,16 @@
+{% if status and status.connected %}
+<div class="status">
+  <div class="stat"><span class="k">Knob</span><span class="v"><span class="dot on"></span>{{ "Paused" if status.paused else "Connected" }}</span></div>
+  <div class="stat"><span class="k">Front app</span><span class="v">{{ status.active_profile }}</span></div>
+  <div class="stat"><span class="k">Rotate mode</span><span class="v"><span class="mode">{{ status.icon }}</span> {{ status.active_rotate }}</span></div>
+  <div class="stat"><span class="k">Last action</span><span class="v pulse">{{ status.last_action or "—" }}</span></div>
+  <div class="stat"><span class="k">Direction</span><span class="v">{{ "CCW = up (reversed)" if status.invert else "CW = up" }}</span></div>
+  <div class="stat"><span class="k">Keystrokes</span><span class="v">{{ "enabled ✓" if status.accessibility else "needs Accessibility" }}</span></div>
+</div>
+{% else %}
+<div class="status">
+  <div class="stat"><span class="k">Knob</span><span class="v"><span class="dot off"></span>Agent not running</span></div>
+  <div class="stat"><span class="v" style="color:var(--mut);font-weight:400">
+    Start it with <span class="ks">python&nbsp;-m&nbsp;halo_knob</span> (or ./install.sh). Scenarios below still save to your config.</span></div>
+</div>
+{% endif %}

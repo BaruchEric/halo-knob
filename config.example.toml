@@ -1,0 +1,63 @@
+# halo-knob configuration — reference copy.
+# The live config is auto-created at ~/.config/halo-knob/config.toml on first run.
+# Edit that file and save; changes auto-reload (no restart).
+#
+# Direction convention: CLOCKWISE = "up"  (volume up / zoom in / scroll up).
+# If clockwise goes the wrong way on your unit, set invert_direction = true
+# (or use the menu-bar "Reverse direction" toggle).
+
+[settings]
+invert_direction = false   # flip if clockwise feels backwards
+scroll_lines     = 3       # lines scrolled per detent
+steps_per_action = 1       # detents per action tick (raise to desensitize)
+double_click_ms  = 350     # max gap to count as a double-click
+long_press_ms    = 550     # hold time to trigger a long-press
+show_menubar     = true
+
+# ---- Profiles -------------------------------------------------------------
+# rotate / held_rotate : scroll | hscroll | volume | zoom | brightness | tabs | media_seek | none
+# click / double_click / long_press : playpause | mute | click | mission_control | cycle_mode
+#                                     | none | "keystroke:<combo>"  (e.g. "keystroke:cmd+shift+p")
+# modes : the list that double-click's "cycle_mode" rotates the active rotate-action through.
+#
+# App keys are bundle identifiers. Anything not listed uses [profiles.default].
+# Unset fields in an app profile inherit from [profiles.default].
+
+[profiles.default]
+rotate       = "scroll"
+held_rotate  = "volume"
+click        = "playpause"
+double_click = "cycle_mode"
+long_press   = "mute"
+modes        = ["scroll", "volume", "zoom"]
+
+[profiles."com.google.Chrome"]
+rotate       = "zoom"
+held_rotate  = "scroll"
+click        = "click"
+long_press   = "mission_control"
+modes        = ["zoom", "scroll", "tabs"]
+
+[profiles."com.apple.Safari"]
+rotate       = "zoom"
+held_rotate  = "scroll"
+modes        = ["zoom", "scroll", "tabs"]
+
+[profiles."com.microsoft.VSCode"]
+rotate       = "scroll"
+held_rotate  = "zoom"
+click        = "keystroke:cmd+p"
+modes        = ["scroll", "zoom"]
+
+[profiles."com.apple.Music"]
+rotate       = "volume"
+held_rotate  = "media_seek"
+click        = "playpause"
+long_press   = "mute"
+modes        = ["volume", "scroll"]
+
+[profiles."com.apple.finder"]
+rotate       = "scroll"
+held_rotate  = "zoom"
+click        = "click"
+modes        = ["scroll", "zoom"]

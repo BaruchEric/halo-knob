@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Runtime artifacts
+*.log
+*.out
+halo-knob.log
+
+# macOS
+.DS_Store

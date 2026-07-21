@@ -1,0 +1,19 @@
+[project]
+name = "halo-knob"
+version = "1.0.0"
+description = "macOS userspace driver for the HALO TOUCH dock's rotary knob (Surface-Dial-class HID)"
+requires-python = ">=3.11"
+dependencies = [
+    "rumps>=0.4.0",
+    "pyobjc-framework-Quartz>=10",
+    "pyobjc-framework-Cocoa>=10",
+    "hidapi>=0.14",          # probe/discovery tools only; the daemon uses IOKit directly
+    "flask>=3",              # local web control panel (halo_knob.webui)
+]
+
+[project.scripts]
+halo-knob = "halo_knob.app:main"
+halo-knob-web = "halo_knob.webui:main"
+
+[tool.setuptools]
+packages = ["halo_knob"]

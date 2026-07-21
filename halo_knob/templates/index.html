@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>halo-knob · control panel</title>
+<script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
+<style>
+  :root{
+    --bg:#0e1014; --bg2:#14171d; --card:#191d26; --card2:#1f2530; --line:#2a313d;
+    --tx:#e7eaf1; --mut:#8b93a3; --acc:#ffb454; --acc2:#5ac8e0;
+    --ok:#5ec27a; --warn:#e5a03c; --bad:#e5484d;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#1a2030 0,var(--bg) 60%);
+    color:var(--tx);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:34px 22px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.01em;margin:0}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);
+    font-weight:600;margin:34px 4px 14px}
+  .sub{color:var(--mut);font-size:14px;margin:3px 0 0}
+  a{color:var(--acc2);text-decoration:none} a:hover{text-decoration:underline}
+
+  header{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .knob{width:52px;height:52px;border-radius:50%;flex:0 0 auto;position:relative;
+    background:conic-gradient(from 220deg,#2b3342,#3a4557,#222834 70%);
+    box-shadow:inset 0 0 0 2px #0c0f14,inset 0 8px 14px rgba(0,0,0,.5),0 3px 10px rgba(0,0,0,.5);
+    animation:spin 14s linear infinite}
+  .knob::after{content:"";position:absolute;top:7px;left:50%;width:4px;height:12px;margin-left:-2px;
+    border-radius:2px;background:var(--acc);box-shadow:0 0 10px var(--acc)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.knob{animation:none}}
+
+  .grid{display:grid;gap:14px}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
+  .card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);
+    border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+
+  /* status */
+  .status{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
+  .dot.on{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+  .dot.off{background:var(--bad);box-shadow:0 0 9px var(--bad)}
+  .stat{display:flex;flex-direction:column;gap:2px}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+  .stat .v{font-size:16px;font-weight:600}
+  .mode{font-size:22px}
+  .pulse{animation:pulse .5s ease}
+  @keyframes pulse{0%{color:var(--acc)}100%{color:var(--tx)}}
+
+  /* scenario cards */
+  .scn{cursor:default;transition:transform .12s ease,border-color .12s ease}
+  .scn:hover{transform:translateY(-2px);border-color:#3a4a5f}
+  .scn.active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc),var(--shadow)}
+  .scn .top{display:flex;align-items:center;gap:11px}
+  .scn .ic{font-size:26px;line-height:1}
+  .scn .nm{font-weight:650;font-size:16px}
+  .scn .tag{color:var(--mut);font-size:13px;margin:9px 0 14px;min-height:36px}
+  .btn{appearance:none;border:1px solid var(--line);background:#232a35;color:var(--tx);
+    padding:8px 13px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;
+    transition:background .12s,border-color .12s}
+  .btn:hover{background:#2b3441;border-color:#3d4a5c}
+  .btn.pri{background:var(--acc);color:#241a06;border-color:var(--acc)}
+  .btn.pri:hover{filter:brightness(1.06)}
+  .badge{font-size:11px;font-weight:700;color:var(--acc);border:1px solid var(--acc);
+    border-radius:999px;padding:2px 9px;margin-left:auto}
+
+  /* profiles table */
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:600}
+  td.app{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#cdd3de}
+  select{background:#0f131a;color:var(--tx);border:1px solid var(--line);border-radius:8px;
+    padding:6px 8px;font:inherit;font-size:13px}
+  select:focus{outline:none;border-color:var(--acc2)}
+  .ks{font-family:ui-monospace,monospace;font-size:12px;color:var(--acc)}
+
+  .row{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .toggle .btn.on{background:var(--acc);color:#241a06;border-color:var(--acc)}
+  input[type=range]{accent-color:var(--acc);width:180px}
+  textarea{width:100%;min-height:280px;background:#0c0f14;color:#d7dbe4;border:1px solid var(--line);
+    border-radius:11px;padding:14px;font:13px/1.55 ui-monospace,Menlo,monospace;resize:vertical}
+  details{margin-top:14px} summary{cursor:pointer;color:var(--mut);font-weight:600}
+  .foot{color:var(--mut);font-size:12.5px;margin-top:40px;line-height:1.7}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+</style>
+</head>
+<body>
+{% macro sel(bundle, field, current, options) %}
+<select name="value" hx-post="/profile/{{ bundle }}" hx-vals='{"field":"{{ field }}"}'
+        hx-trigger="change" hx-swap="none">
+  {% for o in options %}<option value="{{ o }}" {{ "selected" if o==current else "" }}>{{ o }}</option>{% endfor %}
+</select>
+{% endmacro %}
+{% macro clickcell(bundle, field, current) %}
+{% if current and current.startswith("keystroke:") %}
+  <span class="ks">⌨ {{ current.split(":",1)[1] }}</span>
+{% else %}
+<select name="value" hx-post="/profile/{{ bundle }}" hx-vals='{"field":"{{ field }}"}'
+        hx-trigger="change" hx-swap="none">
+  {% for o in click_actions %}<option value="{{ o }}" {{ "selected" if o==current else "" }}>{{ o }}</option>{% endfor %}
+</select>
+{% endif %}
+{% endmacro %}
+<div class="wrap">
+  <header>
+    <div class="knob" aria-hidden="true"></div>
+    <div>
+      <h1>halo-knob</h1>
+      <p class="sub">Turn the HALO&nbsp;TOUCH dial into anything. Pick a scenario, tune per-app.</p>
+    </div>
+  </header>
+
+  <h2>Live</h2>
+  <div class="card" id="status" hx-get="/status" hx-trigger="load, every 800ms" hx-swap="innerHTML">
+    {% include "_status.html" %}
+  </div>
+
+  <h2>Scenarios</h2>
+  <div class="grid cards" id="scenarios">
+    {% include "_scenarios.html" %}
+  </div>
+
+  <h2>Settings</h2>
+  <div class="card" id="settings">
+    {% include "_settings.html" %}
+  </div>
+
+  <h2>Per-app profiles <span style="color:var(--mut);text-transform:none;letter-spacing:0;font-weight:400">— what the dial does in each app (edits save instantly)</span></h2>
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>App (bundle id)</th><th>Rotate</th><th>Press&nbsp;+&nbsp;turn</th><th>Click</th><th>Double</th><th>Long</th></tr></thead>
+      <tbody>
+      {% for bundle, p in profiles.items() %}
+        <tr>
+          <td class="app">{{ "🌐 default" if bundle=="default" else bundle }}</td>
+          <td>{{ sel(bundle, "rotate", p.get("rotate",""), rotate_actions) }}</td>
+          <td>{{ sel(bundle, "held_rotate", p.get("held_rotate",""), rotate_actions) }}</td>
+          <td>{{ clickcell(bundle, "click", p.get("click","")) }}</td>
+          <td>{{ clickcell(bundle, "double_click", p.get("double_click","")) }}</td>
+          <td>{{ clickcell(bundle, "long_press", p.get("long_press","")) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>Raw config (advanced)</summary>
+    <div class="card" style="margin-top:12px">
+      <form hx-post="/raw" hx-target="#raw-result" hx-swap="innerHTML">
+        <div id="raw-result">{% include "_raw_result.html" %}</div>
+        <div style="margin-top:12px"><button class="btn pri" type="submit">Save config</button>
+          <span style="color:var(--mut);font-size:12.5px;margin-left:10px">Validated as TOML before saving.</span></div>
+      </form>
+    </div>
+  </details>
+
+  <p class="foot">
+    Clockwise = up (volume up · zoom in · scroll up). Reverse it above or in the menu bar.<br>
+    Config: <span class="app" style="color:#cdd3de">~/.config/halo-knob/config.toml</span> · changes auto-reload — no restart.
+  </p>
+</div>
+</body>
+</html>

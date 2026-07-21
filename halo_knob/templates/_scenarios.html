@@ -1,0 +1,15 @@
+{% for s in scenarios %}
+<div class="card scn {{ 'active' if s.id==active else '' }}">
+  <div class="top">
+    <span class="ic">{{ s.icon }}</span>
+    <span class="nm">{{ s.name }}</span>
+    {% if s.id==active %}<span class="badge">ACTIVE</span>{% endif %}
+  </div>
+  <div class="tag">{{ s.tagline }}</div>
+  <button class="btn {{ 'pri' if s.id!=active else '' }}"
+          hx-post="/scenario/{{ s.id }}" hx-target="#scenarios" hx-swap="innerHTML"
+          {{ 'disabled' if s.id==active else '' }}>
+    {{ "Applied" if s.id==active else "Apply" }}
+  </button>
+</div>
+{% endfor %}

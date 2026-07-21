@@ -1,0 +1,21 @@
+<div class="row">
+  <div class="toggle stat">
+    <span class="k">Direction</span>
+    <button class="btn {{ 'on' if settings.get('invert_direction') else '' }}"
+            hx-post="/toggle-invert" hx-target="#settings" hx-swap="innerHTML">
+      {{ "↺ CCW = up (reversed)" if settings.get('invert_direction') else "↻ CW = up" }}
+    </button>
+  </div>
+  <div class="stat" style="flex:1;min-width:220px">
+    <span class="k">Scroll lines per detent — {{ settings.get('scroll_lines', 3) }}</span>
+    <input type="range" min="1" max="10" value="{{ settings.get('scroll_lines', 3) }}"
+           name="value" hx-post="/setting" hx-vals='{"key":"scroll_lines"}'
+           hx-target="#settings" hx-swap="innerHTML" hx-trigger="change">
+  </div>
+  <div class="stat" style="min-width:220px">
+    <span class="k">Sensitivity — {{ settings.get('steps_per_action', 1) }} detent(s) / action</span>
+    <input type="range" min="1" max="5" value="{{ settings.get('steps_per_action', 1) }}"
+           name="value" hx-post="/setting" hx-vals='{"key":"steps_per_action"}'
+           hx-target="#settings" hx-swap="innerHTML" hx-trigger="change">
+  </div>
+</div>
