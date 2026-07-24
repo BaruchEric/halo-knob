@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HALO SPIN</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0c10;overflow:hidden;
+    font:15px -apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;color:#e7eaf1}
+  #c{display:block;width:100vw;height:100vh}
+  #conn{position:fixed;top:12px;left:14px;font-size:12px;color:#8b93a3;
+    display:flex;align-items:center;gap:7px;z-index:5}
+  #conn .d{width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 8px #e5484d}
+  #conn.ok .d{background:#5ec27a;box-shadow:0 0 8px #5ec27a}
+  #hint{position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:12.5px;color:#6b7280;z-index:5}
+  .k{font-family:ui-monospace,Menlo,monospace;color:#ffb454}
+</style>
+</head>
+<body>
+<div id="conn"><span class="d"></span><span id="conntxt">connecting…</span></div>
+<canvas id="c"></canvas>
+<div id="hint">turn the knob ↻ to steer · press to pulse · <span class="k">R</span> restart</div>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W, H, CX, CY, R, SR;            // sizes
+function resize(){
+  W = cv.width = innerWidth * devicePixelRatio;
+  H = cv.height = innerHeight * devicePixelRatio;
+  cv.style.width = innerWidth+'px'; cv.style.height = innerHeight+'px';
+  CX = W/2; CY = H/2; R = Math.min(W,H)*0.38; SR = R*0.44;
+}
+addEventListener('resize', resize); resize();
+
+// ---- game state ----
+const S = { MENU:0, PLAY:1, OVER:2 };
+let state = S.MENU;
+let paddleA = -Math.PI/2, drawA = -Math.PI/2;   // paddle angle + smoothed
+const PADDLE_HALF = 0.30, STEP = 0.16;
+let motes = [], particles = [], shocks = [];
+let score = 0, best = 0, lives = 3, combo = 0, charge = 0, spawnT = 0, ringFlash = 0, t0 = 0, pulseGlow = 0;
+
+function level(){ return Math.floor(score/120); }
+function spawnGap(){ return Math.max(0.34, 1.05 - level()*0.07); }
+function moteSpeed(){ return (0.55 + level()*0.05) * R; }   // px/s in ring units
+
+function reset(){
+  motes=[]; particles=[]; shocks=[]; score=0; lives=3; combo=0; charge=0; spawnT=0.6; ringFlash=0; pulseGlow=0;
+}
+function start(){ if(state!==S.PLAY){ reset(); state=S.PLAY; } }
+function gameover(){ best=Math.max(best,score); state=S.OVER; }
+
+function spawnMote(){
+  const a = Math.random()*Math.PI*2;
+  motes.push({a, r: SR+6*devicePixelRatio, spd: moteSpeed()*(0.85+Math.random()*0.4),
+              hue: 190+Math.random()*40, done:false});
+}
+function burst(x,y,hue,n){
+  for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, s=(1+Math.random()*3)*devicePixelRatio;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,hue}); }
+}
+function pulse(){
+  if(charge<1) return;
+  charge=0; pulseGlow=1; shocks.push({r:SR,life:1});
+  let cleared=0;
+  motes.forEach(m=>{ if(!m.done){ m.done=true; cleared++; burst(CX+Math.cos(m.a)*m.r,CY+Math.sin(m.a)*m.r,45,8);} });
+  motes = motes.filter(m=>!m.done);
+  score += cleared*5;
+}
+function angDiff(a,b){ let d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return Math.abs(d); }
+
+// ---- input (SSE from the seized knob) ----
+const es = new EventSource('/events');
+const conn = document.getElementById('conn'), conntxt = document.getElementById('conntxt');
+es.onmessage = e=>{
+  const m = JSON.parse(e.data);
+  if(m.t==='status'){ conn.classList.toggle('ok', !!m.connected);
+    conntxt.textContent = m.connected ? 'knob live' : (m.msg||'no knob'); return; }
+  if(m.t==='rot'){
+    if(state===S.PLAY){ paddleA += (m.dial<0?1:-1)*STEP; }     // physical CW -> clockwise
+    else { start(); }
+  } else if(m.t==='press' && m.down){
+    if(state===S.PLAY) pulse(); else start();
+  }
+};
+es.onopen = ()=> conntxt.textContent='knob live';
+// mouse/touch on the centre "screen" = the contextual action
+cv.addEventListener('pointerdown', ev=>{
+  const x=ev.clientX*devicePixelRatio, y=ev.clientY*devicePixelRatio;
+  if(Math.hypot(x-CX,y-CY) < SR){ state===S.PLAY ? pulse() : start(); }
+});
+addEventListener('keydown', e=>{ if(e.key==='r'||e.key==='R') start(); });
+
+// ---- loop ----
+function frame(ts){
+  const dt = Math.min(0.05, (ts-t0)/1000||0); t0=ts;
+  drawA += angShort(paddleA, drawA)*Math.min(1, dt*18);
+  if(state===S.PLAY){
+    spawnT -= dt; if(spawnT<=0){ spawnMote(); spawnT = spawnGap(); }
+    for(const m of motes){
+      m.r += m.spd*dt;
+      if(!m.done && m.r >= R){
+        m.done = true;
+        if(angDiff(m.a, drawA) < PADDLE_HALF){
+          combo=Math.min(combo+1,9); score += 10*(1+Math.floor(combo/3)); charge=Math.min(1,charge+0.2);
+          burst(CX+Math.cos(m.a)*R, CY+Math.sin(m.a)*R, m.hue, 10);
+        } else {
+          combo=0; ringFlash=1; lives--; if(lives<=0) gameover();
+        }
+      }
+    }
+    motes = motes.filter(m=>!m.done && m.r < R*1.15);
+  }
+  particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vx*=0.94; p.vy*=0.94; p.life-=dt*1.6; });
+  particles = particles.filter(p=>p.life>0);
+  shocks.forEach(s=>{ s.r += (R-SR)*dt*2.4; s.life-=dt*1.4; });
+  shocks = shocks.filter(s=>s.life>0);
+  ringFlash=Math.max(0,ringFlash-dt*2.2); pulseGlow=Math.max(0,pulseGlow-dt*1.5);
+  render();
+  requestAnimationFrame(frame);
+}
+function angShort(target, cur){ let d=(target-cur)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  // arena ring
+  ctx.lineWidth=2*devicePixelRatio;
+  ctx.strokeStyle = ringFlash>0 ? `rgba(229,72,77,${0.3+ringFlash*0.6})` : 'rgba(90,200,224,0.18)';
+  ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.stroke();
+  // shockwaves
+  shocks.forEach(s=>{ ctx.strokeStyle=`rgba(255,180,84,${s.life*0.7})`; ctx.lineWidth=3*devicePixelRatio*s.life;
+    ctx.beginPath(); ctx.arc(CX,CY,s.r,0,Math.PI*2); ctx.stroke(); });
+  // motes
+  motes.forEach(m=>{ const x=CX+Math.cos(m.a)*m.r, y=CY+Math.sin(m.a)*m.r, rad=5*devicePixelRatio;
+    const g=ctx.createRadialGradient(x,y,0,x,y,rad*3);
+    g.addColorStop(0,`hsla(${m.hue},90%,70%,1)`); g.addColorStop(1,`hsla(${m.hue},90%,60%,0)`);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,rad*3,0,Math.PI*2); ctx.fill(); });
+  // particles
+  particles.forEach(p=>{ ctx.fillStyle=`hsla(${p.hue},90%,65%,${p.life})`;
+    ctx.beginPath(); ctx.arc(p.x,p.y,2.4*devicePixelRatio*p.life,0,Math.PI*2); ctx.fill(); });
+  // paddle (arc on the ring)
+  if(state===S.PLAY){
+    ctx.lineCap='round'; ctx.lineWidth=11*devicePixelRatio;
+    ctx.strokeStyle='#ffb454'; ctx.shadowColor='#ffb454'; ctx.shadowBlur=18*devicePixelRatio;
+    ctx.beginPath(); ctx.arc(CX,CY,R,drawA-PADDLE_HALF,drawA+PADDLE_HALF); ctx.stroke(); ctx.shadowBlur=0;
+  }
+  drawScreen();
+}
+
+// the circular "knob screen" — content changes with the situation
+function drawScreen(){
+  // glassy disc
+  const g=ctx.createRadialGradient(CX,CY-SR*0.3,SR*0.2,CX,CY,SR);
+  g.addColorStop(0,'#1b2230'); g.addColorStop(1,'#0d1017');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(CX,CY,SR,0,Math.PI*2); ctx.fill();
+  // charge / pulse ring around it
+  if(state===S.PLAY){
+    ctx.lineWidth=4*devicePixelRatio; ctx.strokeStyle='rgba(255,255,255,0.06)';
+    ctx.beginPath(); ctx.arc(CX,CY,SR+8*devicePixelRatio,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = charge>=1 ? '#ffd07a' : '#5ac8e0';
+    if(charge>=1){ ctx.shadowColor='#ffd07a'; ctx.shadowBlur=14*devicePixelRatio; }
+    ctx.beginPath(); ctx.arc(CX,CY,SR+8*devicePixelRatio,-Math.PI/2,-Math.PI/2+charge*Math.PI*2); ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+  ctx.strokeStyle=`rgba(255,180,84,${0.35+pulseGlow*0.5})`; ctx.lineWidth=1.5*devicePixelRatio;
+  ctx.beginPath(); ctx.arc(CX,CY,SR,0,Math.PI*2); ctx.stroke();
+  // content
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#e7eaf1';
+  const u = SR/100;   // scale unit
+  if(state===S.MENU){
+    ctx.fillStyle='#ffb454'; ctx.font=`600 ${26*u}px system-ui`; ctx.fillText('HALO', CX, CY-16*u);
+    ctx.fillText('SPIN', CX, CY+12*u);
+    ctx.fillStyle='#8b93a3'; ctx.font=`${11*u}px system-ui`; ctx.fillText('turn ↻ or press', CX, CY+40*u);
+  } else if(state===S.PLAY){
+    // lives dots
+    for(let i=0;i<3;i++){ ctx.fillStyle=i<lives?'#5ec27a':'rgba(255,255,255,.12)';
+      ctx.beginPath(); ctx.arc(CX+(i-1)*13*u, CY-46*u, 4*u, 0, Math.PI*2); ctx.fill(); }
+    ctx.fillStyle='#e7eaf1'; ctx.font=`700 ${40*u}px system-ui`; ctx.fillText(score, CX, CY);
+    ctx.fillStyle='#8b93a3'; ctx.font=`${12*u}px system-ui`;
+    ctx.fillText(`LV ${level()+1}${combo>=3?'   ×'+(1+Math.floor(combo/3)):''}`, CX, CY+34*u);
+    if(charge>=1){ ctx.fillStyle='#ffd07a'; ctx.font=`${13*u}px system-ui`; ctx.fillText('⚡ PULSE — press', CX, CY+52*u); }
+  } else {
+    ctx.fillStyle='#e5484d'; ctx.font=`700 ${17*u}px system-ui`; ctx.fillText('GAME OVER', CX, CY-30*u);
+    ctx.fillStyle='#e7eaf1'; ctx.font=`700 ${40*u}px system-ui`; ctx.fillText(score, CX, CY+4*u);
+    ctx.fillStyle='#8b93a3'; ctx.font=`${11*u}px system-ui`;
+    ctx.fillText(`best ${best}`, CX, CY+34*u);
+    ctx.fillStyle='#ffb454'; ctx.fillText('press ↻ to retry', CX, CY+52*u);
+  }
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

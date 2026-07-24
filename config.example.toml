@@ -7,7 +7,8 @@
 # (or use the menu-bar "Reverse direction" toggle).
 
 [settings]
-invert_direction = false   # flip if clockwise feels backwards
+invert_direction = false   # reverse ALL rotation actions (CW <-> CCW) — set true if CW goes "down"
+invert_scroll    = false   # reverse ONLY scroll, decoupled from volume/zoom (rarely needed)
 scroll_lines     = 3       # lines scrolled per detent
 steps_per_action = 1       # detents per action tick (raise to desensitize)
 double_click_ms  = 350     # max gap to count as a double-click

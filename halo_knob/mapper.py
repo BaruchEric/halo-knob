@@ -100,7 +100,10 @@ class Mapper:
 
     def _do_rotate(self, action, direction, profile):
         up = direction == "up"
-        lines = self.state.config.settings.scroll_lines
+        settings = self.state.config.settings
+        if action in ("scroll", "hscroll") and settings.invert_scroll:
+            up = not up   # scroll decoupled from volume/zoom (e.g. CW = up volume, down scroll)
+        lines = settings.scroll_lines
         deb = _DEBOUNCE.get(action)
         if deb is not None:
             now = time.monotonic()
@@ -128,7 +131,7 @@ class Mapper:
                 actions.combo("right" if up else "left")
             elif action == "undo":
                 actions.combo("cmd+shift+z" if up else "cmd+z")
-            self.state.last_action = f"{action} {direction}"
+            self.state.last_action = f"{action} {'up' if up else 'down'}"
         except Exception:
             pass
 

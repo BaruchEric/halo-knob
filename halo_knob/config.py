@@ -25,7 +25,8 @@ DEFAULT_TOML = '''\
 # (or use the menu-bar "Reverse direction" toggle).
 
 [settings]
-invert_direction = false   # flip if clockwise feels backwards
+invert_direction = false   # reverse ALL rotation actions (CW <-> CCW) — set true if CW goes "down"
+invert_scroll    = false   # reverse ONLY scroll, decoupled from volume/zoom (rarely needed)
 scroll_lines     = 3       # lines scrolled per detent
 steps_per_action = 1       # detents per action tick (raise to desensitize)
 double_click_ms  = 350     # max gap to count as a double-click
@@ -83,7 +84,8 @@ modes        = ["scroll", "zoom"]
 
 @dataclass
 class Settings:
-    invert_direction: bool = False
+    invert_direction: bool = False   # reverse ALL rotation actions (CW<->CCW)
+    invert_scroll: bool = False      # reverse ONLY scroll, decoupled from volume/zoom
     scroll_lines: int = 3
     steps_per_action: int = 1
     double_click_ms: int = 350
@@ -129,6 +131,7 @@ def load() -> Config:
     s = raw.get("settings", {})
     settings = Settings(
         invert_direction=bool(s.get("invert_direction", False)),
+        invert_scroll=bool(s.get("invert_scroll", False)),
         scroll_lines=int(s.get("scroll_lines", 3)),
         steps_per_action=max(1, int(s.get("steps_per_action", 1))),
         double_click_ms=int(s.get("double_click_ms", 350)),

@@ -10,6 +10,7 @@ from . import config
 
 BASE_SETTINGS = {
     "invert_direction": False,
+    "invert_scroll": False,    # decouple scroll from volume/zoom (rarely needed)
     "scroll_lines": 3,
     "steps_per_action": 1,
     "double_click_ms": 350,
@@ -202,7 +203,21 @@ def apply(scenario_id: str) -> bool:
     scenario = SCENARIOS_BY_ID.get(scenario_id)
     if not scenario:
         return False
+    settings = scenario.full_settings()
+    # Preserve the user's direction calibration across scenario switches — scenarios
+    # change what the dial *does*, not which way it spins.
+    import tomllib
+    try:
+        with open(config.CONFIG_PATH, "rb") as f:
+            cur = tomllib.load(f).get("settings", {})
+        for k in ("invert_direction", "invert_scroll"):
+            if k in cur:
+                settings[k] = bool(cur[k])
+    except (OSError, ValueError):
+        pass
+    header = [f"# halo-knob — scenario: {scenario.name}  ({scenario.tagline})",
+              "# Applied from the web control panel. Edit freely; changes auto-reload."]
     config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    config.CONFIG_PATH.write_text(render_toml(scenario))
+    config.CONFIG_PATH.write_text(dump_toml(settings, scenario.profiles, header))
     ACTIVE_MARKER.write_text(scenario_id)
     return True
